@@ -1,0 +1,223 @@
+@font-face {
+  font-family: "Iosevka";
+  src: url("fonts/iosevka.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  --ink: #080a0f;
+  --panel: rgba(13, 15, 20, .9);
+  --line: rgba(255, 255, 255, .1);
+  --line-strong: rgba(255, 255, 255, .18);
+  --muted: #8b93a1;
+  --text: #e8eaf0;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+body {
+  font-family: "Iosevka", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#map {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+  background: #090b10;
+}
+
+#map.is-dragging { cursor: grabbing; }
+#map.is-over-marker { cursor: pointer; }
+
+.topbar {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.layers,
+.readout {
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.layers {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 8px;
+  max-width: min(68vw, 760px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  pointer-events: auto;
+}
+
+.layers::-webkit-scrollbar { display: none; }
+
+.layer-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 5px;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease;
+}
+
+.layer-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, .06);
+}
+
+.layer-btn.is-active {
+  color: var(--text);
+  background: rgba(255, 255, 255, .13);
+}
+
+.layer-btn .layer-name {
+  display: none;
+}
+
+.layer-short { display: inline; }
+
+.actions {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+}
+
+.light-dark {
+  appearance: none;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0d0f14;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background .12s ease;
+}
+
+.light-dark:hover { background: #1b1f29; }
+
+.roof-toggle[hidden] { display: none; }
+
+.readout {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+  z-index: 10;
+  pointer-events: none;
+}
+
+#coord { color: var(--text); }
+
+.readout-rule {
+  width: 1px;
+  height: 9px;
+  background: var(--line-strong);
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 30;
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 14px);
+  transition: opacity .1s ease;
+  white-space: nowrap;
+}
+
+.tooltip.is-visible { opacity: 1; }
+
+@media (max-width: 760px) {
+  .topbar {
+    top: max(10px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+  }
+
+  .layers {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .layer-btn {
+    flex: 1 0 auto;
+    padding: 7px 8px;
+    font-size: 10px;
+  }
+
+  .actions {
+    top: max(54px, calc(env(safe-area-inset-top) + 46px));
+    left: max(10px, env(safe-area-inset-left));
+    gap: 6px;
+  }
+
+  .light-dark {
+    padding: 8px 10px;
+    font-size: 10px;
+  }
+
+  .readout {
+    left: max(10px, env(safe-area-inset-left));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    padding: 6px 8px;
+    gap: 6px;
+    font-size: 9px;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip { transition: none; }
+}
