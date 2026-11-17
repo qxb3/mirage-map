@@ -1,21 +1,21 @@
-window.addEventListener('message', (event) => {
-  if (event.origin !== 'https://qxb3.is-a.dev') return
-
-  if (event.data.type === 'SET_HASH') {
-    window.location.hash = event.data.hash
-  }
-})
-
-window.parent.postMessage(
-  {
-    type: 'UPDATE_HASH',
-    hash: window.location.hash
-  },
-  'https://qxb3.is-a.dev'
-)
-
 (() => {
   "use strict";
+
+  window.addEventListener('message', (event) => {
+    if (event.origin !== 'https://qxb3.is-a.dev') return
+
+    if (event.data.type === 'SET_HASH') {
+      window.location.hash = event.data.hash
+    }
+  })
+
+  window.parent.postMessage(
+    {
+      type: 'UPDATE_HASH',
+      hash: window.location.hash
+    },
+    'https://qxb3.is-a.dev'
+  )
 
   const canvas = document.getElementById("map");
   const ctx = canvas.getContext("2d", { alpha: false });
