@@ -1,22 +1,6 @@
 (() => {
   "use strict";
 
-  window.addEventListener('message', (event) => {
-    if (event.origin !== 'https://qxb3.is-a.dev') return
-
-    if (event.data.type === 'SET_HASH') {
-      window.location.hash = event.data.hash
-    }
-  })
-
-  window.parent.postMessage(
-    {
-      type: 'UPDATE_HASH',
-      hash: window.location.hash
-    },
-    'https://qxb3.is-a.dev'
-  )
-
   const canvas = document.getElementById("map");
   const ctx = canvas.getContext("2d", { alpha: false });
   const layersEl = document.getElementById("layers");
@@ -90,6 +74,7 @@
     selection: null,
     hashPath: null,
     hashApplied: false,
+    pendingHash: null,
     frame: 0,
     pointerMap: new Map(),
     drag: null,
@@ -1112,6 +1097,14 @@
       hash += `&tx=${selection.x}&ty=${selection.y}`;
     }
     history.replaceState(null, "", `#${hash}`);
+    postHashToParent(hash);
+  }
+
+  // An embedding page is a different origin and cannot read our hash, so hand
+  // it the state directly instead.
+  function postHashToParent(hash) {
+    if (window.parent === window) return;
+    window.parent.postMessage({ type: "mirage-map:hash", hash }, "*");
   }
 
   function scheduleHash() {
@@ -1119,9 +1112,10 @@
     state.hashTimer = window.setTimeout(syncHash, 240);
   }
 
-  function readHash() {
-    if (!location.hash) return false;
-    const params = new URLSearchParams(location.hash.slice(1));
+  function parseHash(raw) {
+    const hash = String(raw || "").replace(/^#/, "");
+    if (!hash) return null;
+    const params = new URLSearchParams(hash);
     // URLSearchParams hands back null for missing keys, which Number() turns
     // into 0, so absent values must be rejected before conversion.
     const readNumber = (name) => {
@@ -1130,20 +1124,20 @@
       return Number(raw);
     };
     const z = readNumber("layer");
-    if (!Number.isFinite(z) || !entryFor(z)) return false;
+    if (!Number.isFinite(z) || !entryFor(z)) return null;
+    const parsed = { z };
     const x = readNumber("x");
     const y = readNumber("y");
     const scale = readNumber("scale");
-    state.activeZ = z;
-    if (Number.isFinite(x)) state.cx = x;
-    if (Number.isFinite(y)) state.cy = y;
-    if (Number.isFinite(scale) && scale > 0) state.scale = clampScale(scale);
+    if (Number.isFinite(x)) parsed.x = x;
+    if (Number.isFinite(y)) parsed.y = y;
+    if (Number.isFinite(scale) && scale > 0) parsed.scale = clampScale(scale);
     const sx = readNumber("sx");
     const sy = readNumber("sy");
     const ex = readNumber("ex");
     const ey = readNumber("ey");
     if ([sx, sy, ex, ey].every((value) => Number.isFinite(value))) {
-      state.hashPath = {
+      parsed.path = {
         z,
         start: { x: Math.floor(sx), y: Math.floor(sy) },
         end: { x: Math.floor(ex), y: Math.floor(ey) },
@@ -1152,10 +1146,40 @@
     const tx = readNumber("tx");
     const ty = readNumber("ty");
     if (Number.isFinite(tx) && Number.isFinite(ty)) {
-      state.selection = { x: Math.floor(tx), y: Math.floor(ty), z };
+      parsed.selection = { x: Math.floor(tx), y: Math.floor(ty), z };
     }
+    return parsed;
+  }
+
+  // Copies a parsed hash into the view state; loading the layer is up to the caller.
+  function applyHash(parsed) {
+    state.activeZ = parsed.z;
+    if (parsed.x !== undefined) state.cx = parsed.x;
+    if (parsed.y !== undefined) state.cy = parsed.y;
+    if (parsed.scale !== undefined) state.scale = parsed.scale;
+    if (parsed.path) state.hashPath = parsed.path;
+    if (parsed.selection) state.selection = parsed.selection;
     state.hashApplied = true;
+  }
+
+  function readHash() {
+    const parsed = parseHash(location.hash);
+    if (!parsed) return false;
+    applyHash(parsed);
     return true;
+  }
+
+  // The page embedding us asks for a state instead of reloading the frame, so a
+  // link that changes the hash moves the map without throwing it away.
+  async function applyRemoteHash(raw) {
+    if (!state.meta) {
+      state.pendingHash = raw;
+      return;
+    }
+    const parsed = parseHash(raw);
+    if (!parsed) return;
+    applyHash(parsed);
+    await setLayer(parsed.z);
   }
 
   function zoomAt(anchorX, anchorY, factor) {
@@ -1674,6 +1698,11 @@
       updateRoofButton();
       await setLayer(hashLayer ? state.activeZ : meta.layers[0].z);
       if (hashLayer) requestDraw();
+      if (state.pendingHash) {
+        const pending = state.pendingHash;
+        state.pendingHash = null;
+        await applyRemoteHash(pending);
+      }
     } catch (error) {
       fail(error);
     }
@@ -1690,6 +1719,13 @@
   function fail(error) {
     console.error(error);
   }
+
+  window.addEventListener("message", (event) => {
+    if (event.source !== window.parent) return;
+    const data = event.data;
+    if (!data || data.type !== "mirage-map:set-hash" || typeof data.hash !== "string") return;
+    applyRemoteHash(data.hash);
+  });
 
   init();
 })();
